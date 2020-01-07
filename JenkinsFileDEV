@@ -1,0 +1,112 @@
+pipeline{  
+       agent   {  
+          node {  
+                 label 'docker' 
+    
+      }
+   }
+    environment {
+        REGION="ap-southeast-1"
+        CLUSTERNAME="DEV-IQOS-ID-SHOP"
+        SERVICENAME="Dev-Area-Service"
+        ECR_REPO_NAME="area"
+        AWSCRED="iqos-id-ecr" 
+        BUILD_IMAGE_NAME="042471448225.dkr.ecr.ap-southeast-1.amazonaws.com/${ECR_REPO_NAME}"
+        ECRREPO="042471448225.dkr.ecr.ap-southeast-1.amazonaws.com/${ECR_REPO_NAME}"
+        ECRURL="https://042471448225.dkr.ecr.ap-southeast-1.amazonaws.com"
+        ECRCRED="ecr:${REGION}:${AWSCRED}"
+            
+    }
+    stages {
+        stage('Unit Test'){
+            steps{
+                echo "Run Unit Test"
+                // checkout scm
+                // script{
+                    // dockImage = docker.build("${ECR_REPO_NAME}:${env.BUILD_ID}")
+                // }
+            }
+        }
+        stage('Docker Build'){
+            steps{
+                checkout scm
+                script{
+                    dockImage = docker.build("${ECR_REPO_NAME}:${env.BUILD_ID}")
+                }
+            }
+        }
+        stage('Push image to ECR, create tag DEV') {
+            steps{
+                script{
+                        echo "Start Push Image to ECR and tag Image with DEV"
+                            docker.withRegistry(ECRURL, ECRCRED){
+                                    dockImage.push()
+                                    dockImage.push('DEV')
+                                    }
+                                    echo "End Push Image"            
+                                }
+                            }
+                        }
+                    
+                   
+        stage('Deployment to AWS ECS DEV') {
+            agent {
+                docker { 
+                    image 'python:3.7.3-stretch'
+                    label 'docker'
+                    args '-u root:root' }
+            }
+            stages{
+                stage('Prepare AWS CLI'){
+                    steps {
+                        withCredentials(
+                        [[
+                            $class: 'AmazonWebServicesCredentialsBinding',
+                            accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                            credentialsId: AWSCRED,  
+                            secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                        ]]){
+                            sh 'pip3 install awscli'
+                            sh 'aws configure --profile ${ECR_REPO_NAME} set aws_access_key_id ${AWS_ACCESS_KEY_ID}'
+                            sh 'aws configure --profile ${ECR_REPO_NAME} set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}'
+                            sh 'aws configure --profile ${ECR_REPO_NAME} set region ${REGION}'
+                            //sh 'aws s3 cp s3://dev-env-iqos-id/user.env .env'
+                        }
+                    }
+                }
+                stage('Deploy ECS DEV '){
+                    steps{
+			echo "Update Service ECS"
+                        sh 'aws ecs --profile ${ECR_REPO_NAME} update-service --cluster ${CLUSTERNAME} --service ${SERVICENAME} --force-new-deployment'
+                    }
+                }
+              
+              stage ('Run Katalon Integration Test'){
+                steps {
+                    script{
+                           echo 'To be defined once the SCM is connected'
+                          // checkout scm
+                          // def testImage = docker.build("test-image", "./dockerfiles/test") 
+                          // testImage.inside {
+                          //     sh 'make test'
+                          // }
+                          // docker.image('my-custom-image').inside {
+                          //     sh 'make test'
+                          // }
+                          }
+                      }        
+                 }
+              
+              stage('Done'){
+                steps {
+                    script{
+                                echo "Done"
+                             }
+                           }
+                            
+                         }
+            }
+        }
+            
+      } 
+     }
