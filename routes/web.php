@@ -24,5 +24,11 @@ $router->group([
     // area
     $router->group(['prefix' => 'area'], function ($router){
         $router->get('/', 'AreaController@index');
+        $router->get('/insert_area', 'AreaController@insert_area');
+    });
+
+    $router->group(['prefix' => 'service'], function ($router) {
+        $router->get('/province', 'ServiceController@list_province');
+        $router->get('/region', 'ServiceController@list_region');
     });
 });

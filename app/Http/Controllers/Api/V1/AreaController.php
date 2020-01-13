@@ -22,4 +22,9 @@ class AreaController extends Controller
     {
         return "test";
     }
+
+    public function insert_area()
+    {
+
+    }
 }
