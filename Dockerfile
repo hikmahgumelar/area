@@ -21,8 +21,8 @@ RUN composer install \
     --prefer-dist
 =======
 RUN apt-get update -y && apt-get install -y openssl zip unzip git
-RUN docker-php-ext-install pdo pdo_mysql
-RUN chmod +x ./tunning.sh
+COPY tunning.sh /var/www/html
+RUN docker-php-ext-install pdo pdo_mysql && chmod +x ./tunning.sh
 RUN ./tunning.sh
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 COPY . /var/www/html
