@@ -15,5 +15,3 @@ yarn-error.log
 Jenkinsfile
 sonar-project.properties
 .DS_Store
-!/storage/app/file/*
-!storage/app/file/*
