@@ -1,6 +1,7 @@
 # build vendor
 FROM composer as vendor
 
+<<<<<<< HEAD
 ## define enviroment variables for datadog-agent
 #ENV DD_AGENT_HOST=datadog-agent \
 #    DD_TRACE_AGENT_PORT=8126 \
@@ -18,6 +19,20 @@ RUN composer install \
     --no-plugins \
     --no-scripts \
     --prefer-dist
+=======
+RUN apt-get update -y && apt-get install -y openssl zip unzip git
+RUN docker-php-ext-install pdo pdo_mysql
+RUN chmod +x ./tunning.sh
+RUN ./tunning.sh
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+COPY . /var/www/html
+RUN apt-get install -y nginx  supervisor &&  rm -rf /var/lib/apt/lists/*
+RUN composer install &&chmod -R 777 storage/ && rm /etc/nginx/sites-enabled/default 
+COPY nginx.conf /etc/nginx/conf.d/
+RUN composer dump-autoload
+RUN php artisan migrate:refresh --seed 
+RUN chmod +x ./entrypoint
+>>>>>>> create tunning file
 
 # production stage
 FROM hikmahgumelar/iqoswebsrv:latest
