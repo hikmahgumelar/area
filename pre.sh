@@ -2,7 +2,7 @@
 
 # copy .env from S3 Bucket
 echo $ENV_PATH
-aws s3 cp $ENV_PATH /app.env
+aws s3 cp $ENV_PATH /app/.env
 
 php artisan migrate:refresh --seed --force
 
