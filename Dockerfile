@@ -1,6 +1,5 @@
 # build vendor
 FROM composer as vendor
-
 ## define enviroment variables for datadog-agent
 #ENV DD_AGENT_HOST=datadog-agent \
 #    DD_TRACE_AGENT_PORT=8126 \
