@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Facade\FlareClient\Flare;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,6 +14,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        if(env('APP_ENV') == 'production'){
+            $key = env('FLARE_KEY') ? env('FLARE_KEY') : '';
+        }else{
+            $key = '';
+        }
+        Flare::register($key)->registerFlareHandlers();
     }
 }
