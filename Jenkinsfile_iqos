@@ -7,14 +7,22 @@ pipeline{
    }
     environment {
         REGION="ap-southeast-1"
-        CLUSTERNAME="DEV-IQOS-ID-SHOP"
-        SERVICENAME="Dev-Area-Service"
+        CLUSTERNAME_DEV="DEV-IQOS-ID-SHOP"
+        SERVICENAME_DEV="Dev-Area-Service"
+        CLUSTERNAME_QA="QA-IQOS-ID-SHOP"
+        SERVICENAME_QA="QA-Area-Service"
+        CLUSTERNAME_PRD="PRD-IQOS-ID-SHOP"
+        SERVICENAME_PRD="Prd-Area-Service"
+        TAG_DEV="DEV"
+        TAG_QA="QA"
+        TAG_PRD="PRD"
         ECR_REPO_NAME="area"
         AWSCRED="iqos-id-ecr" 
         BUILD_IMAGE_NAME="042471448225.dkr.ecr.ap-southeast-1.amazonaws.com/${ECR_REPO_NAME}"
         ECRREPO="042471448225.dkr.ecr.ap-southeast-1.amazonaws.com/${ECR_REPO_NAME}"
         ECRURL="https://042471448225.dkr.ecr.ap-southeast-1.amazonaws.com"
         ECRCRED="ecr:${REGION}:${AWSCRED}"
+        GIT_AUTH="hgumelar"
             
     }
     stages {
@@ -22,7 +30,7 @@ pipeline{
             steps{
                 echo "Run Unit Test"
                 // checkout scm
-                // script{
+                //// script{
                     // dockImage = docker.build("${ECR_REPO_NAME}:${env.BUILD_ID}")
                 // }
             }
@@ -31,25 +39,62 @@ pipeline{
             steps{
                 checkout scm
                 script{
+
+                    echo "docker build"
                     dockImage = docker.build("${ECR_REPO_NAME}:${env.BUILD_ID}")
                 }
             }
         }
-        stage('Push image to ECR, create tag DEV') {
-            steps{
-                script{
-                        echo "Start Push Image to ECR and tag Image with DEV"
-                            docker.withRegistry(ECRURL, ECRCRED){
-                                    dockImage.push()
-                                    dockImage.push('DEV')
-                                    }
-                                    echo "End Push Image"            
-                                }
-                            }
-                        }
-                    
-                   
-        stage('Deployment to AWS ECS DEV') {
+        stage('Push Images to ECR'){
+                parallel{
+                                        stage('Push image to ECR and create tag DEV') {
+                                            when {
+                                                branch 'development'
+                                            }
+                                            steps{
+                                                script{
+                                                        echo "Start Push Image to ECR and tag Image with DEV"
+                                                            docker.withRegistry(ECRURL, ECRCRED){
+                                                                    dockImage.push()
+                                                                    dockImage.push(TAG_DEV)
+                                                                    }
+                                                                    echo "End Push Image with TAG_DEV"            
+                                                                }
+                                                            }
+                                                        }
+                                        stage('Push image to ECR, create tag QA') {
+                                            when {
+                                                branch 'QA'
+                                            }
+                                            steps{
+                                                script{ 
+                                                        echo "Start Push Image to ECR and tag Image with QA"
+                                                            docker.withRegistry(ECRURL, ECRCRED){
+                                                                    dockImage.push()
+                                                                    dockImage.push(TAG_QA)
+                                                                    }
+                                                                    echo "End Push Image with TAG TAG_QA"            
+                                                                }
+                                                            }
+                                                        }
+                                        stage('Push image to ECR, create tag PRD') {
+                                            when {
+                                                branch 'production'
+                                            }
+                                            steps{
+                                                script{
+                                                        echo "Start Push Image to ECR and tag Image with PRD"
+                                                            docker.withRegistry(ECRURL, ECRCRED){
+                                                                    dockImage.push()
+                                                                    dockImage.push(TAG_PRD)
+                                                                    }
+                                                                    echo "End Push Image with TAG TAG_QA"            
+                                                                }
+                                                            }
+                                                        }
+                }                           
+        }     
+        stage('Deployment to AWS ECS'){ 
             agent {
                 docker { 
                     image 'python:3.7.3-stretch'
@@ -70,17 +115,45 @@ pipeline{
                             sh 'aws configure --profile ${ECR_REPO_NAME} set aws_access_key_id ${AWS_ACCESS_KEY_ID}'
                             sh 'aws configure --profile ${ECR_REPO_NAME} set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}'
                             sh 'aws configure --profile ${ECR_REPO_NAME} set region ${REGION}'
-                            //sh 'aws s3 cp s3://dev-env-iqos-id/user.env .env'
+                            
+
                         }
                     }
                 }
-                stage('Deploy ECS DEV '){
-                    steps{
-			echo "Update Service ECS"
-                        sh 'aws ecs --profile ${ECR_REPO_NAME} update-service --cluster ${CLUSTERNAME} --service ${SERVICENAME} --force-new-deployment'
-                    }
-                }
-              
+        stage('Deploy Service'){               
+            parallel{
+                        stage('Deploy ECS DEV '){
+                            when{
+                                branch 'development'
+                            }
+                            steps{
+                                echo "Update Service ECS DEV"
+                               sh 'aws ecs --profile ${ECR_REPO_NAME} update-service --cluster ${CLUSTERNAME_DEV} --service ${SERVICENAME_DEV} --force-new-deployment'
+                            }
+                        }
+                        stage('Deploy ECS QA '){
+                            when{
+                                branch 'QA'
+                            }
+                            steps{
+                                echo "Update Service ECS QA"
+                                sh 'aws ecs --profile ${ECR_REPO_NAME} update-service --cluster ${CLUSTERNAME_QA} --service ${SERVICENAME_QA} --force-new-deployment'
+                            }
+                        
+                        }
+                        stage('Deploy ECS PRD '){
+                            when{
+                                branch 'production'
+                            }
+                            steps{
+                                echo "Update Service ECS PRD"
+                                sh 'aws ecs --profile ${ECR_REPO_NAME} update-service --cluster ${CLUSTERNAME_PRD} --service ${SERVICENAME_PRD} --force-new-deployment'
+                            }
+                        
+                        }
+           }
+        }
+        
               stage ('Run Katalon Integration Test'){
                 steps {
                     script{
@@ -101,12 +174,17 @@ pipeline{
                 steps {
                     script{
                                 echo "Done"
+
                              }
                            }
-                            
-                         }
-            }
-        }
-            
+                
+         }
       } 
-     }
+        
+   
+   }
+}
+}
+    
+       
+     
