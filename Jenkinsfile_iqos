@@ -73,13 +73,13 @@ pipeline{
                                                                     dockImage.push()
                                                                     dockImage.push(TAG_QA)
                                                                     }
-                                                                    echo "End Push Image with TAG TAG_QA"            
+                                                                    echo "End Push Image with TAG TAG_PRD"            
                                                                 }
                                                             }
                                                         }
                                         stage('Push image to ECR, create tag PRD') {
                                             when {
-                                                branch 'production'
+                                                branch 'Master'
                                             }
                                             steps{
                                                 script{
@@ -143,7 +143,7 @@ pipeline{
                         }
                         stage('Deploy ECS PRD '){
                             when{
-                                branch 'production'
+                                branch 'Master'
                             }
                             steps{
                                 echo "Update Service ECS PRD"
